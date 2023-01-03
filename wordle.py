@@ -1,0 +1,193 @@
+'''
+Program: Wordle Full Hint Logic
+Author: David
+Date: 2022-03-01
+'''
+
+#importing all libraries.
+import random, os, sys, csv
+
+#allow game to run first time
+#Note booleans in python are capitalised
+play = True
+numGuesses = 0
+
+#generates and returns a 5 character hint based on the user's guess
+
+def hint(guess, secretWord):
+    #create a list of hints, one for each letter
+    hintList = []
+    #convert both words to lists
+    guess = list(guess)
+    secretWord = list(secretWord)
+
+    #will track letters we've given clues about
+    cluesSoFar = []
+    
+    #loop thru 0-4 (indices of letters in a 5 letter word)
+    for i in range(0,5):
+        #checks if each letter matches the corresponding one in the secret word and adds the hint to the list
+        if guess[i] == secretWord[i]:
+            hintList.append("#")
+            #add this to clue list
+            cluesSoFar.append(guess[i])
+        else:
+            hintList.append("-")
+
+    #loop thru 0-4 (indices of letters in a 5 letter word) again
+    for i in range(0,5):
+        #check for possible stars - ie it's in the word but not in the right place.
+        if guess[i] in secretWord and guess[i] != secretWord[i]:
+            #count number of occurances of letter in guess and in secret word
+            timesInGuess = guess.count(guess[i])
+            timesInAns = secretWord.count(guess[i])
+            #if there's fewer or equal number of occurances in the guess than the answer
+            #or if we haven't given enough clues yet, we'll give a star.
+            if timesInGuess <= timesInAns or cluesSoFar.count(guess[i]) < timesInAns:
+                hintList[i] = "*"
+            #since we'e given a hint about this letter now, add it to the list of clues so far
+            cluesSoFar.append(guess[i])
+                
+
+    #combine hint list into one 5-character string.
+    return "".join(hintList)
+
+def registerNew(myList): #the function used to register a new user, if the name inputted is not already sasved
+    user = [name.lower() + "," + "0,0,0,0,0,0,0,0,0,0,0,T"] #the basic format for a new user
+    for i in range(len(user)):
+        user[i] = user[i].split(",")
+        myList.append(user[i]) #putting the new user info in the list, in order to write it to the file
+    writeInfo()
+
+#prints reason for guessing again (only one) and returns number of guesses so far.
+def checkError(currGuess, guessesSoFar, secretWord):
+    wordBank = []
+    with open(os.path.join(sys.path[0],"fiveletterdict.txt"), 'r') as f:
+        wordBank = f.read().splitlines()
+
+    #check if guess is 5 letters
+    if len(currGuess) != 5 and currGuess != "":
+        print("Your guess must be 5 letters")
+    #check if guess is only letters
+    elif currGuess != "" and not currGuess.isalpha():
+        print("Your guess must contain only letters")
+    #if this isn't the first time, tell user guess is wrong.
+    elif currGuess != "" and currGuess not in wordBank:
+        print("Not a valid guess")
+    #if the guess isn't in the massive dictionary, reject them.
+    elif currGuess != "":
+        print(" " * 23 + hint(currGuess, secretWord))
+        #increase number of guesses (This should only happen if guess was valid)
+        guessesSoFar += 1
+    return(guessesSoFar)
+
+def calcStats(numGuesses): #the function used to calculate new stats
+    if myList[location][12] == "T": #checks to see if the previous play was a win
+        myList[location][10] = int(myList[location][10])+1 #adds 1 to streak
+    if int(myList[location][10]) > int(myList[location][11]): #checks to see if top streak has been broken
+        myList[location][11] = int(myList[location][11])+1
+    myList[location][7] = int(myList[location][7])+1 #increasing number of played
+    myList[location][8] = int(myList[location][8])+1 #increasing number of wins
+
+    temp = float(int(myList[location][8])/int(myList[location][7])) #calculate win%
+    winPerc = round(100*temp)
+    myList[location][9] = winPerc
+    for i in range(1,7):
+        if int(numGuesses) == i: #increases guess dispersion
+            myList[location][i] = int(myList[location][i])+1
+
+def displayStats(): #the function used to display the stats screen
+    print(name + "'s Wordle Statistics")
+    print("-"*37)
+    print("Played:", myList[location][7], " "*(19-len(str(myList[location][9]))), "Win %:", myList[location][9])
+    print("Streak:", myList[location][10], " "*(13-len(str(myList[location][11]))), "Best Streak:", myList[location][11]) #note: no fix for a streak over 100 since it's not worth considerin
+    print("-"*37)
+    print("Guess Distribution\n")
+    for i in range(0,6):
+        print(str(i+1)+":", myList[location][i+1])
+
+def playGame(numGuesses):
+    #initialise guess so while loop will run
+    guess = ""
+
+    #prevents user from guessing more than 6 times.
+    tooManyGuesses = False
+
+    #wordList (below) should be replaced by a list generated by the dictionary created in part 1 of the assignment.
+    wordList = []
+    with open(os.path.join(sys.path[0],"secretwordlist.txt"), 'r') as f:
+        wordList = f.read().splitlines()
+
+    secretWord = random.choice(wordList)
+    # while loop allows user to guess repeatedly until they are correct.
+    while guess != secretWord:
+
+        numGuesses = checkError(guess, numGuesses, secretWord)
+        if numGuesses == 6:
+            tooManyGuesses = True
+            myList[location][7] = int(myList[location][7])+1 #increase games played
+            myList[location][10] = "0" #sets current streak to 0
+            myList[location][12] = "F" #updates streak to be false
+            break
+
+        #get guess from user
+        guess = input("Guess a 5 letter word: ")
+
+        #this converts guess to lowercase (so APPLE matches apple). If statement prevents error.
+        if guess.isalpha():
+            guess = guess.lower()
+        
+
+    #once loop has terminated, they either guessed correctly or guessed too many times.
+    if tooManyGuesses:
+        print("Sorry, you've run out of guesses.")
+        print(f"The correct answer was: {secretWord}")
+    else:
+    #Increase count by 1 for correct guess
+        numGuesses += 1
+        print("That's right!")
+        myList[location][12] = "T" #set streak to true, so that the next win will add to streak
+        print(f"That took {numGuesses} guesses.\n")
+
+        calcStats(numGuesses)
+        displayStats()
+
+def writeInfo(): #the function to write info from the game into csv file
+    with open(os.path.join(sys.path[0],"records.csv"), 'w',newline = "") as f: 
+        writer = csv.writer(f)
+        writer.writerows(myList) #updates entire csv with previous game's data
+
+with open(os.path.join(sys.path[0],"records.csv"), 'r') as f:
+    myList = f.read().splitlines()
+    for i in range(len(myList)):
+        myList[i] = myList[i].split(",")
+
+names = []
+for i in myList:
+    names.append(i[0])
+
+while True:
+    name = input("Enter name: ")
+    if name != "name" and len(name) < 18:
+        break
+    print("Invalid name.")
+
+if name.lower() in names:
+    location = names.index(name.lower())
+else:
+    print("You have not played before.\nGenerating new record.")
+    names.append(name) #put newest name into name list, in order to get the location in the next line
+    location = names.index(name.lower())
+    registerNew(myList)
+
+#allows whole game to be re-played.
+#Note that since play is a boolean (True or False), we don't need to put play == True since that just evaluates to True
+while play:
+    playGame(numGuesses)
+    writeInfo()
+
+    #check if user wants to play again
+    again = input("\nDo you want to play again? ")
+    if again.isalpha() and again.lower() != "y" and again.lower() != "yes":
+        play = False
+print ("Thanks for playing!")

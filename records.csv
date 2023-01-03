@@ -1,0 +1,5 @@
+name,1,2,3,4,5,6,played, wins, win%, streak, best streak, win last game?(T/F)
+jeff,14,5,4,11,9,4,56,47,87,0,10,T
+tom,0,0,0,0,1,0,11,1,10,0,1,F
+hector,0,0,0,0,0,0,1,0,0,0,0,F
+admin,0,0,0,0,0,0,0,0,0,0,0,T
